@@ -1,0 +1,36 @@
+{
+  "name": "simcrm-v6",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "dev:all": "run-p start-server dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "start-server": "node server/index.js",
+    "migrate:latest": "node ./node_modules/knex/bin/cli.js migrate:latest --knexfile knexfile.js",
+    "migrate:list": "node ./node_modules/knex/bin/cli.js migrate:list --knexfile knexfile.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "mysql2": "^3.15.1",
+    "knex": "^3.1.0",
+    "bullmq": "^5.9.0",
+    "redis": "^4.6.13",
+    "jsonwebtoken": "^9.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^14.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "jsdom": "^22.1.0",
+    "npm-run-all": "^4.1.5",
+    "vite": "^5.0.0",
+    "vitest": "^1.3.0"
+  }
+}
