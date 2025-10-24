@@ -325,6 +325,10 @@ app.get('/api/health', async (req, res) => {
       rate.error = e.message
     }
   }
+  // AI generation health status
+  const aiGenerator = require('./aiDataGenerator')
+  const aiHealth = aiGenerator.getHealthStatus()
+
   // We don't open a connection here (worker/orchestrator handle that); just reflect env presence.
   // Frontend can interpret redisConfigured=true && progressEnabled for advanced polling strategy.
   res.json({
@@ -336,6 +340,7 @@ app.get('/api/health', async (req, res) => {
       port: redisPort ? parseInt(redisPort, 10) : null,
       progressEnabled,
     },
+    ai: aiHealth,
     rate,
     queues: qDepth ? { primary: qDepth, dlqWaiting: dlqDepth } : undefined,
     segments: pendingSegments != null ? { pending: pendingSegments } : undefined,
@@ -976,7 +981,35 @@ app.get('/api/simulations/:id/metrics', async (req, res) => {
     // Ensure rate limit telemetry defaults (explicit zeros help UI rendering)
     const rlDefaults = ['rate_limit_hits','rate_limit_total_delay_ms','rate_limit_scheduled_delay_ms','retries_total']
     for (const k of rlDefaults) if (numMetrics[k] == null) numMetrics[k] = 0
-    res.json({ ok:true, simulationId: id, metrics: numMetrics, percentComplete, status: sim.status, finished_at: sim.finished_at || null })
+
+    // AI generation metrics (Phase: AI Integration)
+    const aiSuccess = numMetrics.ai_generation_success || 0
+    const aiFallback = numMetrics.ai_generation_fallback || 0
+    const aiTotal = aiSuccess + aiFallback
+    const aiGeneration = {
+      successCount: aiSuccess,
+      fallbackCount: aiFallback,
+      totalCount: aiTotal,
+      successRate: aiTotal > 0 ? (aiSuccess / aiTotal).toFixed(3) : null,
+      avgLatencyMs: numMetrics.ai_generation_total_latency_ms && aiSuccess > 0
+        ? Math.round(numMetrics.ai_generation_total_latency_ms / aiSuccess)
+        : null,
+      totalTokens: numMetrics.ai_generation_total_tokens || 0,
+      estimatedCost: numMetrics.ai_generation_total_tokens
+        ? '$' + ((numMetrics.ai_generation_total_tokens / 1000000) * 0.80).toFixed(4) // Haiku pricing: $0.80 per MTok
+        : null,
+      lastErrorCategory: metrics.ai_last_error_category || null
+    }
+
+    res.json({
+      ok: true,
+      simulationId: id,
+      metrics: numMetrics,
+      aiGeneration,
+      percentComplete,
+      status: sim.status,
+      finished_at: sim.finished_at || null
+    })
   } catch (e) {
     res.status(500).json({ ok:false, error: e.message })
   }

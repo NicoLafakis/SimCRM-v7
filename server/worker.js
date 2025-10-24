@@ -52,6 +52,7 @@ const { logInfo, logError } = require('./logging')
 const EVENTS = require('./logEvents')
 const { classifyError } = require('./errorClassification')
 const { buildBullOptions } = require('./jobRetryConfig')
+const aiGenerator = require('./aiDataGenerator')
 
 // Secondary activity constants
 // Primary queue is now sharded: simulation-jobs:<shard>
@@ -317,8 +318,87 @@ async function processJob(job) {
           })
           client.setToken(hubspotToken)
           const tools = createTools(client)
-          // Placeholder external call (commented)
-          // await tools.contacts.create({ properties: { firstname: 'Sim', lastname: 'Lead', email: `lead${index}@example.com` } })
+
+          // AI-powered record creation
+          if (phase === 'contact_created') {
+            // Primary phase: Generate and create contact + company
+            const context = {
+              index,
+              scenario: sim.scenario,
+              distribution_method: sim.distribution_method
+            }
+            const generatedData = await aiGenerator.generateContactAndCompany(context, redisClient, simulationId)
+
+            // Create contact and company via orchestrator (includes property validation)
+            const { createOrchestrator } = require('./orchestrator')
+            const orchestrator = createOrchestrator({ apiToken: hubspotToken, redisClient })
+            const result = await orchestrator.createContactWithCompany({
+              contactProps: generatedData.contact,
+              companyProps: generatedData.company,
+              simId: simulationId
+            })
+
+            // Store created record IDs for secondary activities
+            if (result && !result.simulated) {
+              try {
+                await redisClient.hSet(`sim:${simulationId}:rec:${index}:ids`, {
+                  contactId: result.contact.id,
+                  companyId: result.company.id
+                })
+              } catch (e) {
+                console.warn('Failed to store record IDs:', e.message)
+              }
+            }
+          } else if (phase === 'secondary_activity' && secondaryType) {
+            // Secondary phase: Generate and create note/call/task/ticket
+            let recordIds = null
+            try {
+              recordIds = await redisClient.hGetAll(`sim:${simulationId}:rec:${job.data.record_index}:ids`)
+            } catch {}
+
+            const context = {
+              index: job.data.record_index,
+              scenario: sim.scenario,
+              contactData: null // Would need to fetch if needed
+            }
+
+            const { createOrchestrator } = require('./orchestrator')
+            const orchestrator = createOrchestrator({ apiToken: hubspotToken, redisClient })
+
+            switch (secondaryType) {
+              case 'note':
+                const noteData = await aiGenerator.generateNote(context, redisClient, simulationId)
+                await orchestrator.createNoteWithAssociations({
+                  noteProps: noteData,
+                  contactId: recordIds?.contactId,
+                  companyId: recordIds?.companyId,
+                  simId: simulationId
+                })
+                break
+              case 'call':
+                const callData = await aiGenerator.generateCall(context, redisClient, simulationId)
+                await orchestrator.createCallForContact({
+                  callProps: callData,
+                  contactId: recordIds?.contactId,
+                  simId: simulationId
+                })
+                break
+              case 'task':
+                const taskData = await aiGenerator.generateTask(context, redisClient, simulationId)
+                await orchestrator.createTaskForContact({
+                  taskProps: taskData,
+                  contactId: recordIds?.contactId,
+                  simId: simulationId
+                })
+                break
+              case 'ticket':
+                // Note: Ticket creation not yet in orchestrator, would need to add
+                const ticketData = await aiGenerator.generateTicket(context, redisClient, simulationId)
+                // await tools.tickets.create({ properties: ticketData })
+                break
+            }
+          }
+
           await recordSuccess(redisClient)
           // Success metrics depending on phase
           const metricsKey = `sim:${simulationId}:metrics`

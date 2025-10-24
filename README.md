@@ -44,6 +44,7 @@ Notes
 
 - This is a local simulation only and does not call HubSpot APIs. It is structured so real API calls could be swapped into the SimulationEngine.
  - Per-user HubSpot Private App tokens are now supported & encrypted at rest. See `docs/integrations-hubspot-tokens.md`.
+ - **AI-Powered Data Generation**: SimCRM uses **Anthropic Claude Haiku 4.5** (`claude-haiku-4-5-20251001`) to generate realistic contact, company, and engagement data. Includes 7-8 custom `simcrm_` properties for rich marketing metadata. Falls back gracefully to synthetic data when AI unavailable. Full observability: success/fallback rates, latency, token usage, costs tracked in Redis and visible in Boss Console. See `docs/ai-generation.md`.
  - Upcoming: `docs/scenarios.md` (in progress) will describe B2B/B2C parameterization once persistence + job queue integration lands.
  - Job Queue groundwork added: `simulations` table migration, BullMQ queue (`simulation-jobs`), `server/worker.js` consumer, and simulation API endpoints (`/api/simulations`).
  - Advanced queue features: segmented lazy expansion (hour slices), timestamp cache (`sim:<id>:timestamps`), shard-ready primary queues (`simulation-jobs:<shard>`), secondary activity queue (`simulation-secondary`), segment status endpoint, and rate limiting (token buckets + cooldown + circuit breaker). See `docs/job-queue-architecture.md` and `docs/ratelimits.md`.
@@ -145,14 +146,28 @@ Initial migration: `20250926_initial_users.js` will rename `dev_users` → `user
 - Introduce versioned hash format (e.g., `algo:v1:salt:hash`) to enable future rotations.
 - Remove legacy columns after confirming all rows hold non-null `password_hash`.
 
-### Environment Variables (DB Auth)
+### Environment Variables (DB Auth & AI)
 ```powershell
+# Database
 DB_HOST=localhost
 DB_USER=your_user
 DB_PASS=your_pass
 DB_NAME=simcrm
 DB_PORT=3306
+
+# Security
 TOKEN_ENC_SECRET=32-byte-random-secret-value
+
+# AI Generation (required for AI-powered data)
+ANTHROPIC_API_KEY=sk-ant-api03-xxx...xxx
+AI_MODEL=claude-haiku-4-5-20251001  # Default
+AI_ENABLED=true                      # Set to 'false' to use fallback data only
+
+# Optional AI tuning
+AI_TIMEOUT_MS=10000                  # Request timeout (default: 10s)
+AI_MAX_RETRIES=2                     # Retry attempts (default: 2)
+AI_GENERATION_LOG_LEVEL=info         # debug|info|warn|error
+
 # HUBSPOT_API_TOKEN (optional legacy global token; not required)
 ```
 
@@ -199,6 +214,7 @@ Full history: `CHANGELOG.md`.
 | Topic | File |
 |-------|------|
 | Architecture (queues, segments, sharding) | `docs/job-queue-architecture.md` |
+| AI-powered data generation | `docs/ai-generation.md` |
 | Rate limiting & resilience | `docs/ratelimits.md` |
 | Operations runbook (commands, run, debug) | `OPERATIONS.md` |
 | Change history | `CHANGELOG.md` |
@@ -210,8 +226,8 @@ These docs are intentionally structured for automated agents: each file is a sel
 ## Docs — Quick Table of Contents
 Short, actionable guide to the `docs/` folder: when to read each file and how to use it while working on the app.
 
-- `docs/job-queue-architecture.md` — Full architecture for simulation orchestration (segments, timestamp cache, shards, primary vs secondary queues). Read this when modifying worker logic, segment expansion, or any job scheduling behaviour.
 - `docs/job-queue-architecture.md` — Full architecture for simulation orchestration (segments, timestamp cache, shards, primary vs secondary queues). Read this when modifying worker logic, segment expansion, or any job scheduling behaviour. Related code: `server/worker.js`, `server/orchestrator.js` [backend]
+- `docs/ai-generation.md` — AI-powered data generation using Anthropic Claude Haiku 4.5. Covers custom `simcrm_` properties, fallback strategy, observability, configuration, and troubleshooting. Read when working with data generation, AI integration, or custom property definitions. Related code: `server/aiDataGenerator.js`, `server/worker.js:322-400` [backend]
 - `docs/ratelimits.md` — Details token-bucket, 429 cooldown and circuit-breaker behavior. Consult before changing outbound API pacing, retry/backoff, or adding sleeps inside worker flows.
 - `docs/ratelimits.md` — Details token-bucket, 429 cooldown and circuit-breaker behavior. Consult before changing outbound API pacing, retry/backoff, or adding sleeps inside worker flows. Related code: `server/rng.js`, `server/logging.js`, `server/worker.js` [backend/ops]
 - `docs/integrations-hubspot-tokens.md` — How tokens are encrypted, validated, and stored (`hubspot_api_keys`). Use when touching HubSpot auth, key management, or validation endpoints.

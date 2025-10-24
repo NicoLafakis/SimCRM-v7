@@ -117,6 +117,24 @@ export default function ObservabilityDashboard({ onExit, focusSimulationId }) {
                 {renderStat('Failures (secondary)', detail.data.metrics.secondary_failures || 0)}
                 {renderStat('Idem Skipped', detail.data.metrics.idempotency_skipped || 0)}
               </div>
+              {detail.data.aiGeneration && (
+                <div style={{ marginTop:24 }}>
+                  <h3 style={{ fontSize:11, color: palette.title, margin:'0 0 12px' }}>AI Generation Health</h3>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12 }}>
+                    {renderAIStat('Success Rate', detail.data.aiGeneration.successRate ? (parseFloat(detail.data.aiGeneration.successRate) * 100).toFixed(1) + '%' : 'N/A', detail.data.aiGeneration.successRate >= 0.95 ? 'good' : detail.data.aiGeneration.successRate >= 0.8 ? 'warn' : 'error')}
+                    {renderAIStat('AI Success', detail.data.aiGeneration.successCount || 0, 'neutral')}
+                    {renderAIStat('Fallback', detail.data.aiGeneration.fallbackCount || 0, detail.data.aiGeneration.fallbackCount > 0 ? 'warn' : 'good')}
+                    {renderAIStat('Avg Latency', detail.data.aiGeneration.avgLatencyMs ? detail.data.aiGeneration.avgLatencyMs + ' ms' : 'N/A', 'neutral')}
+                    {renderAIStat('Total Tokens', detail.data.aiGeneration.totalTokens || 0, 'neutral')}
+                    {renderAIStat('Est. Cost', detail.data.aiGeneration.estimatedCost || '$0.00', 'neutral')}
+                  </div>
+                  {detail.data.aiGeneration.lastErrorCategory && (
+                    <div style={{ marginTop:12, padding:8, background:'#ffcc00', border:'3px solid '+palette.frame, fontSize:9 }}>
+                      Last Error: {detail.data.aiGeneration.lastErrorCategory}
+                    </div>
+                  )}
+                </div>
+              )}
               {mode === 'bars' && (
                 <div style={{ marginTop:20 }}>
                   <h3 style={{ fontSize:11, color: palette.title, margin:'0 0 8px' }}>Bar View</h3>
@@ -140,6 +158,27 @@ function renderStat(label, value) {
     <div style={{ background:'#fff', border:'3px solid '+palette.frame, padding:8, fontSize:9 }}>
       <div style={{ color: palette.title, fontSize:9 }}>{label}</div>
       <div style={{ marginTop:4, fontSize:11 }}>{value}</div>
+    </div>
+  )
+}
+
+function renderAIStat(label, value, status) {
+  const statusColors = {
+    good: '#4caf50',
+    warn: '#ffaa00',
+    error: '#ff4444',
+    neutral: palette.text
+  }
+  const bgColors = {
+    good: '#e8f5e9',
+    warn: '#fff8e1',
+    error: '#ffebee',
+    neutral: '#fff'
+  }
+  return (
+    <div style={{ background: bgColors[status] || '#fff', border:'3px solid '+palette.frame, padding:8, fontSize:9 }}>
+      <div style={{ color: palette.title, fontSize:9 }}>{label}</div>
+      <div style={{ marginTop:4, fontSize:11, color: statusColors[status] || palette.text, fontWeight: status !== 'neutral' ? 'bold' : 'normal' }}>{value}</div>
     </div>
   )
 }
