@@ -244,6 +244,15 @@ function createOrchestrator({ apiToken, redisClient = null } = {}) {
       }
       if (sim.status !== 'QUEUED') throw new Error('Simulation not in QUEUED state')
 
+      // Parse HubSpot configuration from database
+      let hubspotConfig = null
+      if (sim.hubspot_pipeline_id || sim.hubspot_owner_ids) {
+        hubspotConfig = {
+          pipelineId: sim.hubspot_pipeline_id || null,
+          ownerIds: sim.hubspot_owner_ids ? JSON.parse(sim.hubspot_owner_ids) : []
+        }
+      }
+
   // Use merged scenario parameters (base + runtime overrides if any)
   const scenarioParams = getMergedScenario(sim.scenario) || getScenarioParameters(sim.scenario)
       // Adjust total count via scenario multiplier (rounded)
@@ -347,6 +356,7 @@ function createOrchestrator({ apiToken, redisClient = null } = {}) {
             distribution_method: sim.distribution_method,
             override_version: vInfo.version,
             overrides_hash: vInfo.hash,
+            hubspot: hubspotConfig,
             scenario_params: scenarioParams ? {
               avgSalesCycleDays: scenarioParams.avgSalesCycleDays,
               dealWinRateBase: scenarioParams.dealWinRateBase,

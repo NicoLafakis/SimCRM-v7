@@ -379,6 +379,11 @@ export default function App() {
             onConfirm={async ({ totalRecords, durationMinutes, batchSize, startDelaySec, jitterPct, maxConcurrency, pipelineId, ownerIds }) => {
               playPlunk()
               try {
+                // Calculate startTime and endTime from duration settings
+                const now = Date.now()
+                const startTime = now + (startDelaySec || 0) * 1000  // Apply start delay
+                const endTime = startTime + durationMinutes * 60 * 1000  // Convert minutes to ms
+
                 const createResp = await fetch('/api/simulations', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -387,7 +392,9 @@ export default function App() {
                     scenario: pendingSelections.scenario,
                     distributionMethod: pendingSelections.distribution || 'linear',
                     totalRecords,
-                    // Additional timing params reserved for future backend use
+                    startTime,
+                    endTime,
+                    // Additional timing params for metadata storage
                     timing: { durationMinutes, batchSize, startDelaySec, jitterPct, maxConcurrency },
                     hubspot: { pipelineId, ownerIds }
                   })

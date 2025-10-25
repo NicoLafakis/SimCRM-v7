@@ -116,6 +116,22 @@ async function maybeExpandNextSegment(redis, simulationId, currentIndex, nowTs) 
   // Need timestamps slice; prefer cached full array
   const sim = await knex('simulations').where({ id: simulationId }).first()
   if (!sim) return
+
+  // Parse HubSpot configuration from database
+  let hubspotConfig = null
+  if (sim.hubspot_pipeline_id || sim.hubspot_owner_ids) {
+    hubspotConfig = {
+      pipelineId: sim.hubspot_pipeline_id || null,
+      ownerIds: sim.hubspot_owner_ids ? JSON.parse(sim.hubspot_owner_ids) : []
+    }
+  }
+
+  // Get scenario parameters for next segment jobs
+  const { getScenarioParameters } = require('./scenarioParameters')
+  const { getMergedScenario, getOverrideVersionInfo } = require('./configSurface')
+  const scenarioParams = getMergedScenario(sim.scenario) || getScenarioParameters(sim.scenario)
+  const vInfo = getOverrideVersionInfo(sim.scenario)
+
   let timestamps = null
   try {
     const cached = await redis.get(`sim:${simulationId}:timestamps`)
@@ -131,12 +147,33 @@ async function maybeExpandNextSegment(redis, simulationId, currentIndex, nowTs) 
   }
   const queueName = queueNameFor(simulationId)
   const { Queue } = require('bullmq')
+  const { buildBullOptions } = require('./jobRetryConfig')
   const queue = new Queue(queueName, { connection: bullConnection })
   try {
     for (let i = firstIdx; i <= lastIdx2; i++) {
       const ts = timestamps[i]
       const delay = Math.max(0, ts - nowTs)
-      await queue.add('create-record', { simulationId, user_id: sim.user_id, index: i + 1, scenario: sim.scenario, distribution_method: sim.distribution_method }, { delay })
+      const retryOpts = buildBullOptions('contact')
+      await queue.add('create-record', {
+        simulationId,
+        user_id: sim.user_id,
+        index: i + 1,
+        scenario: sim.scenario,
+        distribution_method: sim.distribution_method,
+        override_version: vInfo.version,
+        overrides_hash: vInfo.hash,
+        hubspot: hubspotConfig,
+        scenario_params: scenarioParams ? {
+          avgSalesCycleDays: scenarioParams.avgSalesCycleDays,
+          dealWinRateBase: scenarioParams.dealWinRateBase,
+          contactToCompanyRatio: scenarioParams.contactToCompanyRatio,
+          interactions: scenarioParams.interactions ? {
+            probabilities: scenarioParams.interactions.probabilities,
+            perRecordCaps: scenarioParams.interactions.perRecordCaps,
+            globalBudgets: scenarioParams.interactions.globalBudgets,
+          } : null,
+        } : null,
+      }, { delay, ...retryOpts })
     }
   } finally {
     await queue.close()
@@ -242,7 +279,7 @@ async function recordSuccess(redis) {
 }
 
 async function processJob(job) {
-  const { simulationId, index, user_id, scenario_params, phase = 'contact_created', type: secondaryType } = job.data
+  const { simulationId, index, user_id, scenario_params, phase = 'contact_created', type: secondaryType, hubspot } = job.data
   // Primary job idempotency (only for create-record style primary path)
   if (job.name === 'create-record') {
     try {
@@ -316,9 +353,110 @@ async function processJob(job) {
             }
           })
           client.setToken(hubspotToken)
-          const tools = createTools(client)
-          // Placeholder external call (commented)
-          // await tools.contacts.create({ properties: { firstname: 'Sim', lastname: 'Lead', email: `lead${index}@example.com` } })
+
+          // Import orchestrator for high-level operations
+          const { createOrchestrator } = require('./orchestrator')
+          const { createRNG } = require('./rng')
+          const orch = createOrchestrator({ apiToken: hubspotToken, redisClient })
+
+          // Actual record creation logic
+          if (phase === 'contact_created') {
+            // Generate deterministic contact properties
+            const rng = createRNG(`${simulationId}:${index}`)
+
+            // Build contact properties
+            const contactProps = {
+              firstname: `SimContact`,
+              lastname: `${index}`,
+              email: `sim_${simulationId}_${index}@example.com`,
+              lifecyclestage: 'lead',
+            }
+
+            // Build company properties (group contacts by ratio)
+            const companyGroupSize = scenario_params?.contactToCompanyRatio?.max || 3
+            const companyIndex = Math.floor((index - 1) / companyGroupSize)
+            const companyProps = {
+              name: `SimCompany_${companyIndex}`,
+              domain: `simcompany${companyIndex}.example.com`,
+            }
+
+            // Apply owner assignment if configured
+            let selectedOwnerId = null
+            if (hubspot?.ownerIds && hubspot.ownerIds.length > 0) {
+              const ownerIndex = Math.floor(rng.next() * hubspot.ownerIds.length)
+              selectedOwnerId = hubspot.ownerIds[ownerIndex]
+              contactProps.hubspot_owner_id = selectedOwnerId
+              companyProps.hubspot_owner_id = selectedOwnerId
+            }
+
+            // Create contact and company
+            const { contact, company } = await orch.createContactWithCompany({
+              contactProps,
+              companyProps,
+              simId: simulationId
+            })
+
+            // Probabilistically create deal
+            const dealWinRate = scenario_params?.dealWinRateBase || 0.5
+            if (rng.next() < dealWinRate) {
+              const dealProps = {
+                dealname: `Deal for ${contactProps.firstname} ${contactProps.lastname}`,
+                dealstage: 'appointmentscheduled',
+                amount: Math.round(10000 + rng.next() * 40000),
+              }
+
+              // Apply pipeline if configured
+              if (hubspot?.pipelineId) {
+                dealProps.pipeline = hubspot.pipelineId
+              }
+
+              // Apply owner if configured
+              if (selectedOwnerId) {
+                dealProps.hubspot_owner_id = selectedOwnerId
+              }
+
+              await orch.createDealForContact({
+                contactId: contact.id,
+                companyId: company.id,
+                dealProps,
+                simId: simulationId
+              })
+            }
+          } else if (phase === 'secondary_activity' && secondaryType) {
+            // Handle secondary activity creation (notes, calls, tasks)
+            const tools = createTools(client)
+            const { record_index } = job.data
+
+            // For secondary activities, we need the contact ID from the primary record
+            // In a real implementation, this would be stored and retrieved
+            // For now, we'll create the activity with minimal properties
+
+            if (secondaryType === 'note') {
+              await tools.engagements.create({
+                engagement: { type: 'NOTE' },
+                metadata: { body: `Simulation note for record ${record_index}` }
+              })
+            } else if (secondaryType === 'call') {
+              await tools.engagements.create({
+                engagement: { type: 'CALL' },
+                metadata: {
+                  body: `Simulation call for record ${record_index}`,
+                  status: 'COMPLETED',
+                  duration: 300000
+                }
+              })
+            } else if (secondaryType === 'task') {
+              await tools.engagements.create({
+                engagement: { type: 'TASK' },
+                metadata: {
+                  body: `Simulation task for record ${record_index}`,
+                  subject: `Follow-up for record ${record_index}`,
+                  status: 'NOT_STARTED'
+                }
+              })
+            }
+          }
+
           await recordSuccess(redisClient)
           // Success metrics depending on phase
           const metricsKey = `sim:${simulationId}:metrics`
