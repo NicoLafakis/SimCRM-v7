@@ -5,92 +5,86 @@
 
 ---
 
-## Core Philosophy: App Guardian Mode
+# SimCRM v7 - Repository Context
 
-You are the **App Guardian** for this application. Your mission is to build and maintain SimCRM flawlessly, ensuring stability, quality, and clear communication.
-
-### Guiding Principles
-
-1. **Do No Harm** - Never break existing functionality. Review context before changing code.
-2. **Explain Everything** - Communicate what you're doing, why, and expected outcomes in plain language.
-3. **Always Research First** - Check online for latest best practices before implementing solutions.
-4. **Trust Through Transparency** - Be methodical, document your reasoning, earn trust through careful work.
+**Last Updated:** October 22, 2025  
+**Purpose:** Technical context and architectural guidance for SimCRM v7
 
 ---
 
-## Pre-Flight Checklist (Before ANY Code Change)
+## Project Overview
 
-Before touching any code, explicitly verify:
-
-- [ ] Does this change align with project goals in `LATEST_PROGRESS.md`?
-- [ ] Have you researched the latest way to implement this? (Check online resources)
-- [ ] Have you explained the plan and received approval from the user?
-- [ ] Do you have a plan to test this change?
-- [ ] Are you avoiding "quick and dirty" solutions that could cause problems later?
-- [ ] Have you read the relevant documentation from `docs/` for this area?
-
-**If you answered NO to any of these, STOP and address it first.**
+SimCRM v7 is a HubSpot CRM simulation tool that creates realistic test data at scale. The application coordinates multi-stage data generation through a Redis-backed job queue, handles HubSpot API rate limits with circuit breakers, and validates property values to prevent duplicate enums. The system supports B2B and B2C scenarios with configurable parameters and provides real-time observability through structured logging and metrics.
 
 ---
 
-## Development Workflow (Required 8-Step Process)
+## Tech Stack
 
-Follow this workflow for ALL feature work and changes:
-
-### 1. **Understand the Goal**
-- Clarify what the user wants to achieve
-- Ask simple questions if anything is unclear
-- Confirm scope and acceptance criteria
-
-### 2. **Research the "How"**
-- Search online for latest best practices
-- Check relevant documentation in `docs/` folder
-- Review existing code patterns in the codebase
-- Ensure you're using modern, stable techniques
-
-### 3. **Ensure Alignment**
-- Check that changes align with `README.md` architecture
-- Review `LATEST_PROGRESS.md` for recent context
-- Verify no conflicts with existing features
-- Check security rules in "Production Data Policy" section
-
-### 4. **Explain the Plan**
-- Create a clear, simple explanation of what you'll do
-- Use analogies if needed ("Think of this like...")
-- List files you'll modify and why
-- State expected outcomes
-
-### 5. **Get Confirmation**
-- Wait for explicit approval ("looks good", "go ahead", etc.)
-- **DO NOT proceed without confirmation**
-
-### 6. **Update LATEST_PROGRESS.md**
-- **PREPEND** your plan and relevant context to `LATEST_PROGRESS.md`
-- Keep only the 4 most recent/relevant entries
-- Delete the oldest entry when adding a 5th (maintain max 4)
-- Include: date, feature name, goal, implementation approach
-
-### 7. **Implement with Care**
-- Write clean, idiomatic code
-- Follow existing code style and patterns
-- Add inline comments for complex logic
-- Ensure proper error handling
-
-### 8. **Review & Test**
-- Review all changes for correctness
-- Run existing tests: `npm test`
-- Suggest new tests if needed (only when necessary)
-- Verify no regressions
-- Update documentation if behavior changed
+- **Frontend:** React 18 + Vite
+- **Backend:** Node.js + Express
+- **Database:** MySQL (via Knex migrations)
+- **Queue:** BullMQ (Redis-backed)
+- **Testing:** Mocha + Chai
+- **Authentication:** Scrypt password hashing (TODO: Upgrade to Argon2id)
+- **Token Storage:** AES-256-CBC encryption with `TOKEN_ENC_SECRET`
 
 ---
 
-## Documentation Map (Know Before You Code)
+## Folder Structure
 
-**Always check these docs BEFORE working in these areas:**
+```
+server/
+├── worker.js                  # Job processing, rate limiting, segment expansion
+├── orchestrator.js            # Record creation coordination via HubSpot API
+├── propertyValidator.js       # Property deduplication & validation
+├── propertyValueCache.js      # Redis cache for property values
+├── hubspotKeyStore.js         # Encrypted token storage
+├── auth.js                    # User authentication
+├── logging.js                 # Structured logging
+├── errorClassification.js     # Error categorization
+├── cryptoUtil.js              # Encryption/decryption utilities
+├── db.js                      # Database queries
+├── toolsFactory.js            # Tool registration
+└── tools/hubspot/
+    ├── apiRegistry.js         # HubSpot endpoint definitions
+    ├── contacts.js            # Contact creation
+    ├── companies.js           # Company creation
+    └── deals.js               # Deal creation
 
-| Working On | Read This First | Related Code |
-|-----------|----------------|--------------|
+src/
+├── components/
+│   ├── ObservabilityDashboard.jsx
+│   ├── TetrisVerification.jsx
+│   ├── Scenario/
+│   │   └── scenarioOptions.js
+│   └── Themes/
+└── ...
+
+docs/
+├── job-queue-architecture.md
+├── ratelimits.md
+├── integrations-hubspot-tokens.md
+├── record-creation-rules.md
+├── redis-plain-language.md
+├── observability.md
+├── ui-rules.md
+├── scenarios.md
+├── verification-flow.md
+└── hubspot-api-registry.md
+
+test/
+├── {module}.test.js           # Unit tests
+└── {feature}.integration.test.js  # Integration tests
+```
+
+---
+
+## Documentation Map
+
+**Context for code modifications in specific areas:**
+
+| Code Area | Essential Documentation | Related Files |
+|-----------|------------------------|---------------|
 | Worker logic, job scheduling, segments | `docs/job-queue-architecture.md` | `server/worker.js`, `server/orchestrator.js` |
 | API rate limiting, retries, backoff | `docs/ratelimits.md` | `server/worker.js`, `server/logging.js` |
 | HubSpot authentication, tokens | `docs/integrations-hubspot-tokens.md` | `server/cryptoUtil.js`, `server/hubspotKeyStore.js` |
@@ -103,182 +97,184 @@ Follow this workflow for ALL feature work and changes:
 | HubSpot API endpoints | `docs/hubspot-api-registry.md` | `server/tools/hubspot/apiRegistry.js` |
 | Property validation & caching | `LATEST_PROGRESS.md` (Property Validator section) | `server/propertyValidator.js`, `server/propertyValueCache.js` |
 
-**Rule:** If you're modifying code in any of these areas, read the corresponding doc first. No exceptions.
+---
+
+## Critical Modules
+
+| Module | Purpose | Key Characteristics |
+|--------|---------|---------------------|
+| `server/worker.js` | Job processing, rate limiting, segment expansion | Core simulation execution - handles primary segment jobs and secondary activity jobs |
+| `server/orchestrator.js` | Record creation coordination | Calls HubSpot APIs - validates all properties before creation |
+| `server/propertyValidator.js` | Property deduplication & validation | Prevents duplicate enum errors using fuzzy matching (85% threshold) - must not be bypassed |
+| `server/propertyValueCache.js` | Redis-based property value storage | Caches existing property values by object type and field name |
+| `server/hubspotKeyStore.js` | Encrypted token storage | Security critical - tokens encrypted at rest, decrypted only at API call time |
+| `server/auth.js` | User authentication | Uses scrypt hashing (format: `scrypt:<salt>:<hash>`) |
+| `src/components/TetrisVerification.jsx` | Verification mini-game | Has classic/enhanced modes with different scoring rules |
+| `server/logging.js` | Structured logging | Standardized log format for observability - no console.log in production |
 
 ---
 
-## Key Architecture Concepts
-
-### Tech Stack
-- **Frontend:** React 18 + Vite
-- **Backend:** Node.js + Express
-- **Database:** MySQL (via Knex migrations)
-- **Queue:** BullMQ (Redis-backed)
-- **Testing:** Mocha + Chai
-
-### Critical Modules (Touch Carefully)
-
-| Module | Purpose | Special Notes |
-|--------|---------|---------------|
-| `server/worker.js` | Job processing, rate limiting, segment expansion | Core of simulation execution - test thoroughly |
-| `server/orchestrator.js` | Record creation coordination | Calls HubSpot APIs - must validate all properties |
-| `server/propertyValidator.js` | Property deduplication & validation | Prevents duplicate enum errors - don't bypass |
-| `server/hubspotKeyStore.js` | Encrypted token storage | Security critical - never log decrypted values |
-| `server/auth.js` | User authentication | Uses scrypt hashing - production needs upgrade |
-| `src/components/TetrisVerification.jsx` | Verification mini-game | Has classic/enhanced modes - respect mode rules |
-
-### Data Flow (High Level)
+## Data Flow Architecture
 
 ```
-User configures simulation (UI)
+User configures simulation (React UI)
     ↓
 POST /api/simulations (creates DB record)
     ↓
-POST /api/simulations/:id/start (enqueues first segment)
+POST /api/simulations/:id/start (enqueues first hour segment)
     ↓
-Worker picks up job from simulation-jobs:0 queue
+Worker picks up job from simulation-jobs:{shard} queue
     ↓
-Worker expands hour segment, schedules record creation jobs
+Worker expands hour segment into individual record creation jobs
     ↓
-Orchestrator creates records via HubSpot API
+Record creation jobs enqueued on simulation-jobs:{shard}
     ↓
-propertyValidator ensures no duplicate enum values
+Orchestrator processes record creation via HubSpot API
     ↓
-propertyValueCache stores values in Redis
+propertyValidator checks for duplicate enum values
     ↓
-Worker marks segment complete, enqueues next segment
+propertyValueCache stores values in Redis (meta:{objectType}:fields:{fieldName})
+    ↓
+Worker marks segment complete, enqueues next hour segment
+    ↓
+Simulation completes when all segments processed
 ```
 
 ---
 
-## Security & Data Rules (CRITICAL)
+## Security & Data Constraints
 
-### Production Data Policy - ZERO TOLERANCE
+### Production Data Policy
 
-**NEVER use fake, dummy, sample, example, or placeholder values in production code paths.**
+**All production code paths must use real authenticated values:**
 
-❌ **Forbidden:**
-- Auto-fallback to `demo-user` or synthetic IDs
-- Mock tokens in runtime code
-- Length-based token validation
-- Placeholder API keys or secrets
-- Stubbed user identifiers
+- `user.id` must be a real authenticated user ID (fail with HTTP 400 if missing)
+- HubSpot tokens validated via actual API call, not heuristics or length checks
+- No auto-fallback to `demo-user`, `test-user`, or synthetic identifiers
+- No placeholder API keys or mock tokens in runtime code
+- Abort with explicit error if required value is absent
 
-✅ **Required:**
-- Real authenticated `user.id` required (fail fast with 400 if missing)
-- Token validation via actual HubSpot API call
-- Abort with explicit error if required value absent
-- Never log decrypted secrets
-- No broad try/catch that swallows production errors
+### Password & Authentication
 
-**Violation = Immediate block.** Do not proceed until remediated.
-
-### Password & Auth Rules
 - Passwords hashed with scrypt (format: `scrypt:<salt>:<hash>`)
 - Never store or log plaintext passwords
 - Session management not yet implemented (stateless responses)
-- TODO: Upgrade to Argon2id before production
+- Pending upgrade: Argon2id before production deployment
 
-### HubSpot Token Rules
-- Tokens encrypted at rest with `TOKEN_ENC_SECRET`
-- Decryption only happens at API call time
-- Never log decrypted tokens (redact in logs: `token=[REDACTED]`)
-- Validate with real HubSpot API call, not heuristics
+### HubSpot Token Security
+
+- Tokens encrypted at rest using `TOKEN_ENC_SECRET` (AES-256-CBC)
+- Decryption happens only at API call time in `server/orchestrator.js`
+- Tokens must never be logged (use `token=[REDACTED]` in logs)
+- Token validation requires real HubSpot API call (no heuristic validation)
+
+### Logging Security
+
+- Never log decrypted tokens or secrets
+- Never log plaintext passwords
+- Use structured logging via `server/logging.js`
+- Redact sensitive data in error messages
 
 ---
 
 ## Code Quality Standards
 
-### General Rules
-- **No commented-out code** in commits (use git history instead)
-- **No `console.log`** in production code (use structured logging via `server/logging.js`)
-- **No magic numbers** (use named constants)
-- **Async/await over callbacks** (modern Node.js style)
-- **Destructuring** when accessing multiple object properties
-- **Early returns** for guard clauses (reduce nesting)
+### General Conventions
+
+- No commented-out code in commits (use git history)
+- No `console.log` in production code (use `server/logging.js`)
+- No magic numbers (use named constants)
+- Async/await preferred over callbacks
+- Destructuring for multiple object properties
+- Early returns for guard clauses (reduce nesting)
 
 ### Error Handling
-- Always catch and handle errors appropriately
-- Use structured logging for errors: `logger.error({ context, error })`
-- Classify errors via `server/errorClassification.js` when possible
-- DLQ jobs that fail after max retries
-- Return meaningful HTTP status codes (400, 401, 403, 404, 500, 503)
 
-### Testing Requirements
-- **Unit tests** for business logic modules
-- **Integration tests** for API endpoints with real dependencies
+- All errors logged via structured logging: `logger.error({ context, error })`
+- Errors classified via `server/errorClassification.js` when applicable
+- Failed jobs moved to DLQ (Dead Letter Queue) after max retries
+- HTTP status codes: 400 (bad request), 401 (unauthorized), 403 (forbidden), 404 (not found), 500 (server error), 503 (service unavailable)
+
+### Testing Standards
+
+- Unit tests for business logic modules in `test/{module}.test.js`
+- Integration tests for API endpoints in `test/{feature}.integration.test.js`
 - Mock external services (HubSpot, Redis) in unit tests
-- Use descriptive test names: `it('should reject duplicate enum values')`
+- Use real dependencies in integration tests (with cleanup)
 - Test edge cases: null, undefined, empty string, special characters
-- Run tests before committing: `npm test`
-
-### Git Commit Messages
-- Use conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`
-- Be descriptive: `feat: add property validator to prevent duplicate enum errors`
-- Reference issues when applicable: `fix: resolve #123`
+- Descriptive test names: `it('should reject duplicate enum values')`
+- Target >80% coverage for new modules
+- Run tests: `npm test`
 
 ---
 
-## Common Tasks & Procedures
+## Database Schema
 
-### Adding a New HubSpot Object Type
+### Key Tables
 
-1. Read `docs/hubspot-api-registry.md` for endpoint patterns
-2. Read `docs/record-creation-rules.md` for field restrictions
-3. Add endpoint to `server/tools/hubspot/apiRegistry.js`
-4. Create tool file in `server/tools/hubspot/{objectType}.js`
-5. Register in `server/toolsFactory.js`
-6. Add orchestrator method in `server/orchestrator.js`
-7. Update `propertyValidator.js` to support object type
-8. Write integration test in `test/{objectType}.test.js`
-9. Update `docs/hubspot-api-registry.md` with new endpoint
+- `users` - User accounts (scrypt-hashed passwords)
+- `hubspot_keys` - Encrypted HubSpot tokens per user
+- `simulations` - Simulation configurations and status
+- `simulation_jobs` - Job tracking (deprecated, replaced by BullMQ)
 
-### Modifying Worker Job Processing
+### Migration Commands
 
-1. **STOP** - Read `docs/job-queue-architecture.md` first
-2. Read `docs/ratelimits.md` for rate limit behavior
-3. Identify which job type: primary segment or secondary activity
-4. Make changes to `server/worker.js`
-5. Test with single worker: `node server/worker.js`
-6. Test with multiple shards: `$env:SIMCRM_QUEUE_SHARDS="3"; node server/worker.js`
-7. Verify metrics in Redis: check `sim:<id>:metrics` hash
-8. Update `docs/job-queue-architecture.md` if behavior changed
+```bash
+npm run migrate:latest      # Apply pending migrations
+npm run migrate:list        # Show migration status
+npm run migrate:rollback    # Undo last migration
+npx knex migrate:make {name} # Create new migration
+```
 
-### Adding UI Components
+### Migration Structure
 
-1. Read `docs/ui-rules.md` for styling guidelines
-2. Place in appropriate folder: `src/components/{domain}/`
-3. Use existing theme system via `ThemeContext`
-4. Follow 8-bit aesthetic (pixel fonts, pluck sounds, neon colors)
-5. Ensure accessibility (ARIA labels, keyboard navigation)
-6. Test with all 12 themes
-7. No inline styles (use CSS modules or global classes)
-
-### Database Schema Changes
-
-1. Create new migration: `npx knex migrate:make {descriptive_name}`
-2. Write both `up()` and `down()` functions
-3. Test migration: `npm run migrate:latest`
-4. Test rollback: `npm run migrate:rollback`
-5. Update `server/db.js` if adding new queries
-6. Document in `docs/` if schema change affects behavior
-
-### Adding New Tests
-
-1. Identify test type: unit (`test/{module}.test.js`) or integration (`test/{feature}.integration.test.js`)
-2. Use Mocha + Chai syntax
-3. Structure: `describe()` for module, `it()` for test case
-4. Mock external dependencies (HubSpot, Redis) in unit tests
-5. Use real dependencies in integration tests (with cleanup)
-6. Test edge cases: null, undefined, empty, invalid input
-7. Aim for >80% coverage for new modules
-8. Run tests: `npm test`
+All migrations must include both `up()` and `down()` functions for rollback capability.
 
 ---
 
-## Environment Setup (Quick Reference)
+## Queue Architecture
 
-### Required Environment Variables
+### Queue Sharding
+
+- Configurable via `SIMCRM_QUEUE_SHARDS` environment variable (default: 1)
+- Shards named: `simulation-jobs:0`, `simulation-jobs:1`, etc.
+- Each worker processes one shard
+- Multi-worker deployment: each worker claims one shard ID
+
+### Job Types
+
+1. **Primary Segment Jobs** - Expand hour segments into record creation jobs
+2. **Secondary Activity Jobs** - Create individual records (contacts, companies, deals)
+
+### Rate Limiting
+
+- Circuit breaker pattern prevents overwhelming HubSpot API
+- Rate limits enforced per endpoint (see `docs/ratelimits.md`)
+- Exponential backoff on 429 responses
+- Circuit state stored in Redis: `hs:circuit:state`
+
+---
+
+## Redis Key Patterns
+
+Key patterns used across the application:
+
+| Pattern | Purpose | Example |
+|---------|---------|---------|
+| `sim:{id}:metrics` | Simulation metrics hash | `sim:123:metrics` |
+| `sim:{id}:status` | Simulation status | `sim:123:status` |
+| `meta:{objectType}:fields:{fieldName}` | Cached property values | `meta:contacts:fields:industry` |
+| `hs:ratelimit:tokens` | HubSpot rate limit tokens | `hs:ratelimit:tokens` |
+| `hs:circuit:state` | Circuit breaker state | `hs:circuit:state` |
+| `bull:simulation-jobs:{shard}:*` | BullMQ queue data | `bull:simulation-jobs:0:jobs` |
+
+See `docs/redis-plain-language.md` for detailed key documentation.
+
+---
+
+## Environment Variables
+
+### Required
 
 ```powershell
 # Database
@@ -288,144 +284,254 @@ DB_PASS=your_pass
 DB_NAME=simcrm
 DB_PORT=3306
 
-# Encryption
+# Encryption (32-byte random secret)
 TOKEN_ENC_SECRET=32-byte-random-secret-value
+```
 
-# Redis (optional, defaults to localhost:6379)
+### Optional
+
+```powershell
+# Redis (defaults to localhost:6379)
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
-# Queue Sharding (optional)
+# Queue Sharding (defaults to 1)
 SIMCRM_QUEUE_SHARDS=1
-```
-
-### Common Commands
-
-```powershell
-# Install dependencies
-npm install
-
-# Run dev server (frontend + backend)
-npm run dev
-
-# Run tests
-npm test
-
-# Run worker (single shard)
-node server/worker.js
-
-# Run worker (multi-shard)
-$env:SIMCRM_QUEUE_SHARDS="3"; node server/worker.js
-
-# Database migrations
-npm run migrate:latest   # Apply pending
-npm run migrate:list     # Show status
-npm run migrate:rollback # Undo last
-
-# Check Redis state
-redis-cli
-> KEYS sim:*
-> HGETALL sim:123:metrics
 ```
 
 ---
 
-## When to Update Documentation
+## Common Commands
 
-Update docs in these situations:
+```powershell
+# Development
+npm install              # Install dependencies
+npm run dev              # Run dev server (frontend + backend)
+npm test                 # Run test suite
 
-| Change Type | Update Required |
-|-------------|-----------------|
-| New worker behavior (segment logic, rate limits) | `docs/job-queue-architecture.md`, `docs/ratelimits.md` |
+# Worker Management
+node server/worker.js    # Run worker (single shard)
+$env:SIMCRM_QUEUE_SHARDS="3"; node server/worker.js  # Multi-shard
+
+# Database
+npm run migrate:latest   # Apply pending migrations
+npm run migrate:list     # Show migration status
+npm run migrate:rollback # Undo last migration
+
+# Redis Inspection
+redis-cli
+> KEYS sim:*
+> HGETALL sim:123:metrics
+> GET hs:circuit:state
+```
+
+---
+
+## HubSpot Integration
+
+### Supported Object Types
+
+- Contacts
+- Companies
+- Deals
+
+### API Registry
+
+Endpoints defined in `server/tools/hubspot/apiRegistry.js` following this pattern:
+
+```javascript
+{
+  objectType: 'contacts',
+  endpoint: '/crm/v3/objects/contacts',
+  method: 'POST',
+  rateLimit: { requests: 100, window: 10000 } // 100 per 10s
+}
+```
+
+### Property Validation
+
+`server/propertyValidator.js` prevents duplicate enum values by:
+1. Fetching existing values from cache or HubSpot API
+2. Normalizing values (lowercase, trim)
+3. Fuzzy matching against existing values (85% similarity threshold)
+4. Rejecting duplicates with specific error message
+
+### Record Creation Flow
+
+All record creation goes through `server/orchestrator.js`:
+1. Validate properties against schema
+2. Check for duplicate enums via `propertyValidator.js`
+3. Execute HubSpot API call with retry logic
+4. Cache new property values in Redis
+5. Log result with structured logging
+
+---
+
+## UI Architecture
+
+### Theme System
+
+- 12 themes available (8-bit aesthetic)
+- Theme context: `ThemeContext` provides current theme
+- Themes stored in: `src/components/Themes/`
+- All components must support all themes
+
+### UI Guidelines
+
+- Pixel fonts for retro aesthetic
+- Pluck sounds on interactions
+- Neon color palette
+- ARIA labels required for accessibility
+- Keyboard navigation support required
+- No inline styles (use CSS modules or global classes)
+
+### Scenario Configuration
+
+- B2B and B2C templates in `src/components/Scenario/scenarioOptions.js`
+- Server-side parameters in `server/scenarioParameters.js`
+- See `docs/scenarios.md` for parameter documentation
+
+---
+
+## Key Files Context
+
+### Files Requiring Property Validation
+
+When modifying these files, ensure property validation remains intact:
+- `server/orchestrator.js` - Must call `propertyValidator.validate()` before API calls
+- `server/tools/hubspot/*.js` - Must not bypass validator
+- Any new HubSpot object creation code
+
+### Files Handling Encrypted Data
+
+When modifying these files, maintain encryption security:
+- `server/hubspotKeyStore.js` - Token encryption/decryption
+- `server/cryptoUtil.js` - Core encryption utilities
+- Never log decrypted values in these files
+
+### Files Managing Rate Limits
+
+When modifying these files, preserve rate limit logic:
+- `server/worker.js` - Implements circuit breaker pattern
+- `server/orchestrator.js` - Respects rate limits per endpoint
+- See `docs/ratelimits.md` for rate limit specifications
+
+---
+
+## Documentation Update Requirements
+
+When code changes affect documented behavior, update the corresponding documentation in the same commit:
+
+| Change Type | Documentation to Update |
+|-------------|------------------------|
+| Worker behavior (segment logic, rate limits) | `docs/job-queue-architecture.md`, `docs/ratelimits.md` |
 | New HubSpot object type or endpoint | `docs/hubspot-api-registry.md` |
 | New Redis key pattern | `docs/redis-plain-language.md` |
 | New UI component or styling rule | `docs/ui-rules.md` |
 | New scenario parameter | `docs/scenarios.md` |
 | New API endpoint | `README.md` (Simulation API table) |
 | Breaking change | `CHANGELOG.md` |
-| Major feature completion | Prepend to `LATEST_PROGRESS.md` |
-
-**Rule:** If you change behavior that's documented, update the docs in the same commit.
+| Major feature completion | Prepend to `LATEST_PROGRESS.md` (max 4 entries) |
 
 ---
 
-## Troubleshooting Guide
+## Troubleshooting Context
 
 ### Worker Not Processing Jobs
 
-1. Check Redis connection: `redis-cli PING`
-2. Check queue exists: `redis-cli KEYS simulation-jobs:*`
-3. Check worker is running: `ps aux | grep worker.js` (Unix) or Task Manager (Windows)
-4. Check logs for circuit breaker: `grep "Circuit.*OPEN" logs/worker.log`
-5. Check for DLQ jobs: `redis-cli KEYS bull:*:failed`
+Common causes:
+- Redis connection failure (check: `redis-cli PING`)
+- Queue doesn't exist (check: `redis-cli KEYS simulation-jobs:*`)
+- Worker not running (check process manager)
+- Circuit breaker OPEN state (check: `redis-cli GET hs:circuit:state`)
+- Jobs in DLQ (check: `redis-cli KEYS bull:*:failed`)
 
 ### HubSpot API Errors
 
-1. Check token is valid: test in HubSpot UI
-2. Check token permissions: must have CRM write access
-3. Check rate limits: `redis-cli GET hs:ratelimit:tokens`
-4. Check circuit breaker: `redis-cli GET hs:circuit:state`
-5. Check logs for 429 responses: `grep "429" logs/worker.log`
-6. Consult `docs/ratelimits.md` for rate limit behavior
+Common causes:
+- Invalid or expired token (test in HubSpot UI)
+- Insufficient token permissions (requires CRM write access)
+- Rate limit exceeded (check: `redis-cli GET hs:ratelimit:tokens`)
+- Circuit breaker OPEN (check: `redis-cli GET hs:circuit:state`)
+- 429 responses logged in `logs/worker.log`
 
 ### Database Connection Issues
 
-1. Check MySQL is running: `mysql -u{user} -p`
-2. Check env vars: `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`
-3. Test connection: `node scripts/test-db-connection.js`
-4. Check migrations: `npm run migrate:list`
+Common causes:
+- MySQL not running (test: `mysql -u{user} -p`)
+- Incorrect environment variables (`DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME`)
+- Pending migrations (check: `npm run migrate:list`)
 
 ### Duplicate Enum Value Errors
 
-1. Check `propertyValidator.js` is enabled in orchestrator
-2. Check Redis cache: `redis-cli KEYS meta:*:fields`
-3. Check fuzzy match threshold (default: 85%)
-4. Check logs for normalization decisions
-5. Verify object type is supported in validator
+Common causes:
+- `propertyValidator.js` disabled in orchestrator
+- Redis cache stale (check: `redis-cli KEYS meta:*:fields`)
+- Fuzzy match threshold too strict (default: 85%)
+- Object type not supported in validator
+- Logs show normalization decisions
 
 ---
 
-## Communication Style (When Explaining to User)
+## Data Types & Interfaces
 
-- **Use layman's terms** - Avoid jargon like "idempotency", "circuit breaker", "backpressure"
-- **Use analogies** - "Think of the worker like a chef processing orders..."
-- **Be patient** - No question is stupid
-- **Be proactive** - Update on progress without being asked
-- **Be transparent** - Explain risks and trade-offs
-- **Be reassuring** - "This is a safe change because..."
+### Core Types
 
-### Example Good Explanation
+```typescript
+// Simulation Configuration
+interface Simulation {
+  id: number;
+  user_id: number;
+  name: string;
+  scenario: 'B2B' | 'B2C';
+  total_records: number;
+  start_date: Date;
+  end_date: Date;
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+}
 
-> "I'm going to add a new field to the companies table to track the industry. This is like adding a new column to a spreadsheet. I'll create a database migration (like a recipe for the change) so it can be applied automatically. Then I'll update the code that creates companies to include this new field. I'll test it to make sure existing companies aren't affected."
+// HubSpot Token
+interface HubSpotKey {
+  user_id: number;
+  encrypted_token: string;
+  iv: string;
+  created_at: Date;
+  updated_at: Date;
+}
 
-### Example Bad Explanation
-
-> "I'll add a new column to the companies schema via Knex migration and update the ORM mapper to include the field in the CREATE payload with proper type coercion."
+// Property Validation
+interface ValidationResult {
+  valid: boolean;
+  errors?: string[];
+  normalizedValue?: string;
+}
+```
 
 ---
 
-## Final Checklist (Before Marking Task Complete)
+## Important Constraints
 
-- [ ] Code is clean, commented, and follows project style
-- [ ] No console.log or commented code
-- [ ] Tests written and passing
-- [ ] Documentation updated (if behavior changed)
-- [ ] `LATEST_PROGRESS.md` updated (if major feature)
-- [ ] No security violations (no placeholders, no logged secrets)
-- [ ] Changes align with project goals
-- [ ] User has reviewed and approved
+### Module Dependencies
 
-**Only mark task complete when ALL items checked.**
+- `server/propertyValidator.js` depends on `server/propertyValueCache.js`
+- `server/orchestrator.js` depends on `server/propertyValidator.js`
+- `server/worker.js` depends on `server/orchestrator.js`
+- Never create circular dependencies between these modules
+
+### Testing Dependencies
+
+- Redis required for integration tests
+- MySQL required for integration tests
+- Mock Redis/MySQL for unit tests
+- Integration test cleanup: always reset DB and Redis state after tests
+
+### Queue Shard Assignments
+
+- Each worker must claim exactly one shard ID
+- Shard IDs range from 0 to (SIMCRM_QUEUE_SHARDS - 1)
+- Multiple workers on same shard causes duplicate processing
+- See `docs/job-queue-architecture.md` for shard assignment logic
 
 ---
 
-## Remember
-
-You are the App Guardian. Your job is to protect this application while helping it grow. When in doubt:
-
-1. **Stop and research** - Don't guess
-2. **Ask for clarification** - Better to ask than assume
-3. **Test thoroughly** - Break things in dev, not production
-4. **Document decisions** - Future you will thank you
-
-**Build trust through careful, transparent work.**
+This document provides technical context for working on SimCRM v7. For detailed specifications on specific subsystems, consult the corresponding documentation in the `docs/` directory.
