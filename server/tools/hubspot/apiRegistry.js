@@ -9,17 +9,20 @@ const endpoints = {
   'crm.contacts.get': { method: 'get', path: (id) => id ? `/crm/v3/objects/contacts/${encodeURIComponent(id)}` : '/crm/v3/objects/contacts', docs: 'https://developers.hubspot.com/docs/api/crm/contacts' },
   'crm.contacts.update': { method: 'patch', path: (id) => `/crm/v3/objects/contacts/${encodeURIComponent(id)}`, docs: 'https://developers.hubspot.com/docs/api/crm/contacts' },
   'crm.contacts.delete': { method: 'delete', path: (id) => `/crm/v3/objects/contacts/${encodeURIComponent(id)}`, docs: 'https://developers.hubspot.com/docs/api/crm/contacts' },
+  'crm.contacts.search': { method: 'post', path: '/crm/v3/objects/contacts/search', docs: 'https://developers.hubspot.com/docs/api/crm/search' },
 
   // Companies
   'crm.companies.create': { method: 'post', path: '/crm/v3/objects/companies', docs: 'https://developers.hubspot.com/docs/api/crm/companies' },
   'crm.companies.get': { method: 'get', path: (id) => id ? `/crm/v3/objects/companies/${encodeURIComponent(id)}` : '/crm/v3/objects/companies', docs: 'https://developers.hubspot.com/docs/api/crm/companies' },
   'crm.companies.update': { method: 'patch', path: (id) => `/crm/v3/objects/companies/${encodeURIComponent(id)}`, docs: 'https://developers.hubspot.com/docs/api/crm/companies' },
   'crm.companies.delete': { method: 'delete', path: (id) => `/crm/v3/objects/companies/${encodeURIComponent(id)}`, docs: 'https://developers.hubspot.com/docs/api/crm/companies' },
+  'crm.companies.search': { method: 'post', path: '/crm/v3/objects/companies/search', docs: 'https://developers.hubspot.com/docs/api/crm/search' },
 
   'crm.deals.create': { method: 'post', path: '/crm/v3/objects/deals', docs: 'https://developers.hubspot.com/docs/api/crm/deals' },
   'crm.deals.get': { method: 'get', path: (id) => id ? `/crm/v3/objects/deals/${encodeURIComponent(id)}` : '/crm/v3/objects/deals', docs: 'https://developers.hubspot.com/docs/api/crm/deals' },
   'crm.deals.update': { method: 'patch', path: (id) => `/crm/v3/objects/deals/${encodeURIComponent(id)}`, docs: 'https://developers.hubspot.com/docs/api/crm/deals' },
   'crm.deals.delete': { method: 'delete', path: (id) => `/crm/v3/objects/deals/${encodeURIComponent(id)}`, docs: 'https://developers.hubspot.com/docs/api/crm/deals' },
+  'crm.deals.search': { method: 'post', path: '/crm/v3/objects/deals/search', docs: 'https://developers.hubspot.com/docs/api/crm/search' },
 
   'crm.tickets.create': { method: 'post', path: '/crm/v3/objects/tickets', docs: 'https://developers.hubspot.com/docs/api/crm/tickets' },
   'crm.tickets.get': { method: 'get', path: (id) => id ? `/crm/v3/objects/tickets/${encodeURIComponent(id)}` : '/crm/v3/objects/tickets', docs: 'https://developers.hubspot.com/docs/api/crm/tickets' },
