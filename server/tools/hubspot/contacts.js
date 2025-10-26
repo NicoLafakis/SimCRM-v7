@@ -29,6 +29,11 @@ module.exports = (client) => ({
     const res = await client.del(url)
     return res.data
   },
+  search: async (searchRequest) => {
+    const url = buildPath('crm.contacts.search')
+    const res = await client.post(url, searchRequest)
+    return res.data
+  },
   batchUpsert: async (inputs, idProperty = 'email') => {
     const body = { inputs: inputs.map(i => ({ id: i[idProperty], idProperty, properties: i.properties })) }
     const url = buildPath('crm.contacts.batchUpsert')

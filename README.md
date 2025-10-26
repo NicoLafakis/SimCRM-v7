@@ -2,6 +2,21 @@
 
 Lightweight React + Vite app that simulates HubSpot CRM activity by creating contacts, companies, associations, notes, deals and progressing them through marketing and sales stages.
 
+---
+
+## ⚠️ PRODUCTION MODE ENABLED
+
+**This application is configured to create REAL HubSpot records.**
+
+📖 **See [PRODUCTION_SETUP.md](./PRODUCTION_SETUP.md) for complete setup instructions.**
+
+Key settings:
+- `SIM_REAL_MODE=1` - Actual HubSpot API calls enabled
+- Real contacts, companies, and deals will be created
+- Pipeline and owner assignments are live
+
+---
+
 ## Onboarding Configuration Flow (Current UI)
 
 After authentication the user is guided through a linear configuration pipeline:

@@ -13,11 +13,14 @@ build/
 
 # Local env files (do not commit secrets)
 .env
-.env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.development
+.env.production
+# Allow .env.example as template
+!.env.example
 
 # Credentials and token files
 *.pem

@@ -19,5 +19,9 @@ module.exports = (client) => ({
   delete: async (id) => {
     const res = await client.del(buildPath('crm.companies.delete', id))
     return res.data
+  },
+  search: async (searchRequest) => {
+    const res = await client.post(buildPath('crm.companies.search'), searchRequest)
+    return res.data
   }
 })

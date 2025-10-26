@@ -740,11 +740,17 @@ app.post('/api/simulations', async (req, res) => {
     if (total > MAX_RECORDS) total = MAX_RECORDS
     const now = Date.now()
     const start = startTime ? parseInt(startTime,10) : now
-    const end = endTime ? parseInt(endTime,10) : (start + 60*60*1000)
+    // Use timing object if provided, otherwise default to 1 hour
+    let defaultEnd = start + 60*60*1000  // Default 1 hour
+    if (req.body.timing?.durationMinutes) {
+      defaultEnd = start + (req.body.timing.durationMinutes * 60 * 1000)
+    }
+    const end = endTime ? parseInt(endTime,10) : defaultEnd
     if (isNaN(start) || isNaN(end)) return res.status(400).json({ ok:false, error:'startTime/endTime invalid' })
     if (end <= start) return res.status(400).json({ ok:false, error:'endTime must be greater than startTime' })
-    const MAX_HORIZON_MS = 1000*60*60*24*7 // 7 days
-    if ((end - start) > MAX_HORIZON_MS) return res.status(400).json({ ok:false, error:'simulation horizon exceeds 7 days' })
+    // Update max horizon to 30 days (20,160 minutes as per frontend validation)
+    const MAX_HORIZON_MS = 1000*60*60*24*30 // 30 days
+    if ((end - start) > MAX_HORIZON_MS) return res.status(400).json({ ok:false, error:'simulation horizon exceeds 30 days' })
     const methodSanitized = String(distributionMethod).toLowerCase()
     const allowedMethods = ['linear','bell_curve','front_loaded','back_loaded','surge_mid']
     if (!allowedMethods.includes(methodSanitized)) return res.status(400).json({ ok:false, error:'distributionMethod invalid' })
