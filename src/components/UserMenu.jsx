@@ -46,6 +46,8 @@ export default function UserMenu({ user, onSignOut, onNav, playPlunk }) {
           <button role="menuitem" className="user-menu-item" onClick={() => nav('simulations')}>Simulations</button>
           <button role="menuitem" className="user-menu-item" onClick={() => nav('history')}>History</button>
           <button role="menuitem" className="user-menu-item" onClick={() => nav('profile')}>Profile</button>
+          <button role="menuitem" className="user-menu-item" onClick={() => nav('help')}>Help</button>
+          <button role="menuitem" className="user-menu-item" onClick={() => nav('faq')}>FAQ</button>
           {user.role === 'boss' && (
             <button role="menuitem" className="user-menu-item" onClick={() => nav('boss')}>Boss</button>
           )}
