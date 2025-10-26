@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react'
 import pluckUrl from '../../assets/gameboy-pluck.mp3'
 
-export default function SignUpPage({ onBack, onSuccess }) {
+export default function SignUpPage({ onBack, onSuccess, onViewTOS, onViewPrivacy }) {
   const plunk = useMemo(() => new Audio(pluckUrl), [])
   const [playerName, setPlayerName] = useState('')
   const [passcode, setPasscode] = useState('')
   const [verify, setVerify] = useState('')
   const [email, setEmail] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [tosAccepted, setTosAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -40,6 +41,10 @@ export default function SignUpPage({ onBack, onSuccess }) {
     const hasNumberOrSpecial = /[0-9]|[^A-Za-z0-9]/.test(passcode)
     if (!(minLength && hasUpper && hasLower && hasNumberOrSpecial)) {
       setError('Passcode does not meet the required complexity')
+      return
+    }
+    if (!tosAccepted) {
+      setError('You must accept the Terms of Service and Privacy Policy')
       return
     }
     setLoading(true)
@@ -90,8 +95,28 @@ export default function SignUpPage({ onBack, onSuccess }) {
           </div>
         </div>
         {error && <div style={{ color: '#8b0000', fontSize: 12 }}>{error}</div>}
+        <div className="tos-acceptance">
+          <label className="tos-label">
+            <input
+              type="checkbox"
+              checked={tosAccepted}
+              onChange={(e) => setTosAccepted(e.target.checked)}
+              className="tos-checkbox"
+            />
+            <span className="tos-text">
+              I accept the{' '}
+              <a href="#" onClick={(e) => { e.preventDefault(); onViewTOS?.() }} className="tos-link">
+                Terms of Service
+              </a>
+              {' '}and{' '}
+              <a href="#" onClick={(e) => { e.preventDefault(); onViewPrivacy?.() }} className="tos-link">
+                Privacy Policy
+              </a>
+            </span>
+          </label>
+        </div>
         <div className="auth-actions">
-          <button className="btn btn-signup" type="submit" disabled={loading || !passAll}>{loading ? 'Please wait...' : 'Continue'}</button>
+          <button className="btn btn-signup" type="submit" disabled={loading || !passAll || !tosAccepted}>{loading ? 'Please wait...' : 'Continue'}</button>
         </div>
         <div className="pass-reqs" aria-live="polite">
           <ul>
@@ -102,7 +127,13 @@ export default function SignUpPage({ onBack, onSuccess }) {
           </ul>
         </div>
       </form>
-      <footer className="site-footer">©️2025 Black Maige. Game the simulation.</footer>
+      <footer className="site-footer">
+        ©️2025 Black Maige. Game the simulation.
+        <br/>
+        <a href="#" onClick={(e) => { e.preventDefault(); onViewTOS?.() }} className="footer-link">Terms of Service</a>
+        {' • '}
+        <a href="#" onClick={(e) => { e.preventDefault(); onViewPrivacy?.() }} className="footer-link">Privacy Policy</a>
+      </footer>
     </div>
   )
 }

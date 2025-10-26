@@ -38,6 +38,70 @@ function expandDistribution(method, total, startTime, endTime) {
       const combined = (q * 0.4) + peak * 0.6
       points.push(Math.round(startTime + combined * span))
     }
+  } else if (method === 'trickle') {
+    // Slow, consistent inflow with slight variance to simulate organic trickle
+    // Uses square root easing for gentle deceleration
+    for (let i = 0; i < total; i++) {
+      const q = (i + 0.5) / total
+      const eased = Math.sqrt(q) // gentle acceleration
+      const variance = (Math.sin(i * 7.3) * 0.02) // tiny variance ±2%
+      points.push(Math.round(startTime + (eased + variance) * span))
+    }
+  } else if (method === 'random_bursts') {
+    // Create 3-7 random burst centers with records clustered around them
+    const numBursts = 3 + Math.floor(Math.random() * 5) // 3-7 bursts
+    const burstCenters = []
+    for (let b = 0; b < numBursts; b++) {
+      burstCenters.push(Math.random())
+    }
+    burstCenters.sort((a, b) => a - b)
+
+    // Assign each record to nearest burst center with some spread
+    for (let i = 0; i < total; i++) {
+      const burstIdx = Math.floor(Math.random() * numBursts)
+      const center = burstCenters[burstIdx]
+      const spread = (Math.random() - 0.5) * 0.15 // ±7.5% spread around center
+      const position = Math.max(0, Math.min(1, center + spread))
+      points.push(Math.round(startTime + position * span))
+    }
+  } else if (method === 'daily_spike') {
+    // Repeating daily peak pattern - sine wave that cycles every 24 hours
+    const MS_PER_DAY = 1000 * 60 * 60 * 24
+    const numDays = span / MS_PER_DAY
+
+    for (let i = 0; i < total; i++) {
+      const q = (i + 0.5) / total
+      // Add daily sine wave on top of linear progression
+      const dayPhase = (q * numDays) % 1 // position within current day
+      const dailyPeak = Math.sin(dayPhase * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5 // 0..1..0 cycle
+      const combined = q + (dailyPeak * 0.2 - 0.1) // adjust position by ±10%
+      points.push(Math.round(startTime + Math.max(0, Math.min(1, combined)) * span))
+    }
+  } else if (method === 'weekend_surge') {
+    // Weight records toward weekends (simulated day of week)
+    const MS_PER_DAY = 1000 * 60 * 60 * 24
+
+    for (let i = 0; i < total; i++) {
+      const q = (i + 0.5) / total
+      const baseTs = startTime + q * span
+      const daysSinceStart = (baseTs - startTime) / MS_PER_DAY
+      const dayOfWeek = (Math.floor(daysSinceStart) + (new Date(startTime).getDay())) % 7
+
+      // If weekend (Sat=6, Sun=0), bias toward these times
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const weekendBias = isWeekend ? 0.3 : -0.1 // 30% more likely on weekends
+
+      // Apply bias by adjusting position
+      const adjusted = q + (Math.random() - 0.5) * 0.1 + weekendBias * 0.05
+      points.push(Math.round(startTime + Math.max(0, Math.min(1, adjusted)) * span))
+    }
+  } else if (method === 'custom') {
+    // Custom distribution - for now, falls back to linear
+    // TODO: Implement custom distribution upload/configuration in future version
+    for (let i = 0; i < total; i++) {
+      const q = (i + 0.5) / total
+      points.push(Math.round(startTime + q * span))
+    }
   } else {
     // linear default
     for (let i = 0; i < total; i++) {

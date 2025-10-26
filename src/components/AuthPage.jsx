@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-export default function AuthPage({ onSignup, onLogin }) {
+export default function AuthPage({ onSignup, onLogin, onViewTOS, onViewPrivacy }) {
   const [identifier, setIdentifier] = useState('')
   const [passcode, setPasscode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -53,7 +53,13 @@ export default function AuthPage({ onSignup, onLogin }) {
           <button className="btn btn-signup" type="button" onClick={onSignup}>Sign Up</button>
         </div>
       </form>
-      <footer className="site-footer">©️2025 Black Maige. Game the simulation.</footer>
+      <footer className="site-footer">
+        ©️2025 Black Maige. Game the simulation.
+        <br/>
+        <a href="#" onClick={(e) => { e.preventDefault(); onViewTOS?.() }} className="footer-link">Terms of Service</a>
+        {' • '}
+        <a href="#" onClick={(e) => { e.preventDefault(); onViewPrivacy?.() }} className="footer-link">Privacy Policy</a>
+      </footer>
     </div>
   )
 }

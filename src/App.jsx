@@ -18,6 +18,12 @@ import BoomboxPlayer from './components/BoomboxPlayer'
 import { AudioProvider } from './audio/AudioContext'
 import KonamiEasterEgg from './components/KonamiEasterEgg'
 import BossDashboard from './components/BossDashboard'
+import ProfilePage from './components/ProfilePage'
+import HistoryPage from './components/HistoryPage'
+import HelpPage from './components/help/HelpPage'
+import FAQPage from './components/help/FAQPage'
+import TermsOfService from './components/legal/TermsOfService'
+import PrivacyPolicy from './components/legal/PrivacyPolicy'
 
 const VIEWS = {
   LANDING: 'landing',
@@ -34,6 +40,12 @@ const VIEWS = {
   TIMING_QUANTITIES: 'timing-quantities',
   SIM_PROGRESS: 'sim-progress',
   BOSS_DASH: 'boss-dash',
+  PROFILE: 'profile',
+  HISTORY: 'history',
+  HELP: 'help',
+  FAQ: 'faq',
+  TOS: 'tos',
+  PRIVACY: 'privacy',
 }
 
 export default function App() {
@@ -179,6 +191,14 @@ export default function App() {
               // Redirect directly to SaaS selection after login
               setView(VIEWS.SAAS_SELECT)
             }}
+            onViewTOS={() => {
+              playPlunk()
+              setView(VIEWS.TOS)
+            }}
+            onViewPrivacy={() => {
+              playPlunk()
+              setView(VIEWS.PRIVACY)
+            }}
           />
         </>
       )
@@ -187,7 +207,18 @@ export default function App() {
         <>
           <CornerLogo onClick={handleLogoHome} />
           {renderBackToTop}
-          <SignUpPage onBack={() => setView(VIEWS.AUTH)} onSuccess={handleSignupSuccess} />
+          <SignUpPage
+            onBack={() => setView(VIEWS.AUTH)}
+            onSuccess={handleSignupSuccess}
+            onViewTOS={() => {
+              playPlunk()
+              setView(VIEWS.TOS)
+            }}
+            onViewPrivacy={() => {
+              playPlunk()
+              setView(VIEWS.PRIVACY)
+            }}
+          />
         </>
       )
     case VIEWS.VERIFY_INTRO:
@@ -231,6 +262,10 @@ export default function App() {
             onNav={(target) => {
               if (target === 'setup') return;
               if (target === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
               console.log('Navigate to section:', target)
             }}
           />
@@ -260,6 +295,10 @@ export default function App() {
             onNav={(target) => {
               if (target === 'setup') return;
               if (target === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
               console.log('Navigate to section:', target)
             }}
           />
@@ -285,6 +324,10 @@ export default function App() {
             onNav={(target) => {
               if (target === 'setup') return;
               if (target === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
               console.log('Navigate to section:', target)
             }}
           />
@@ -312,6 +355,10 @@ export default function App() {
             onNav={(target) => {
               if (target === 'setup') return;
               if (target === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
               console.log('Navigate to section:', target)
             }}
           />
@@ -339,6 +386,10 @@ export default function App() {
             onNav={(target) => {
               if (target === 'setup') return;
               if (target === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
               console.log('Navigate to section:', target)
             }}
           />
@@ -367,6 +418,10 @@ export default function App() {
             onNav={(target) => {
               if (target === 'setup') return;
               if (target === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
               console.log('Navigate to section:', target)
             }}
           />
@@ -444,10 +499,118 @@ export default function App() {
             playPlunk={playPlunk}
             onNav={(target) => {
               if (target === 'setup') return;
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
               console.log('Navigate to section:', target)
             }}
           />
-          <BossDashboard user={user} onExit={() => setView(VIEWS.LANDING)} />
+          <BossDashboard user={user} onExit={() => setView(VIEWS.SAAS_SELECT)} />
+        </>
+      )
+    case VIEWS.PROFILE:
+      return (
+        <>
+          <CornerLogo onClick={handleLogoHome} />
+          {renderBackToTop}
+          <UserMenu
+            user={user}
+            onSignOut={handleSignOut}
+            playPlunk={playPlunk}
+            onNav={(target) => {
+              if (target === 'setup') return;
+              if (target === 'boss' && user.role === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
+              console.log('Navigate to section:', target)
+            }}
+          />
+          <ProfilePage user={user} onBack={() => setView(VIEWS.SAAS_SELECT)} playPlunk={playPlunk} />
+        </>
+      )
+    case VIEWS.HISTORY:
+      return (
+        <>
+          <CornerLogo onClick={handleLogoHome} />
+          {renderBackToTop}
+          <UserMenu
+            user={user}
+            onSignOut={handleSignOut}
+            playPlunk={playPlunk}
+            onNav={(target) => {
+              if (target === 'setup') return;
+              if (target === 'boss' && user.role === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
+              console.log('Navigate to section:', target)
+            }}
+          />
+          <HistoryPage user={user} onBack={() => setView(VIEWS.SAAS_SELECT)} playPlunk={playPlunk} />
+        </>
+      )
+    case VIEWS.HELP:
+      return (
+        <>
+          <CornerLogo onClick={handleLogoHome} />
+          {renderBackToTop}
+          <UserMenu
+            user={user}
+            onSignOut={handleSignOut}
+            playPlunk={playPlunk}
+            onNav={(target) => {
+              if (target === 'setup') return;
+              if (target === 'boss' && user.role === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
+              console.log('Navigate to section:', target)
+            }}
+          />
+          <HelpPage onBack={() => setView(VIEWS.SAAS_SELECT)} playPlunk={playPlunk} />
+        </>
+      )
+    case VIEWS.FAQ:
+      return (
+        <>
+          <CornerLogo onClick={handleLogoHome} />
+          {renderBackToTop}
+          <UserMenu
+            user={user}
+            onSignOut={handleSignOut}
+            playPlunk={playPlunk}
+            onNav={(target) => {
+              if (target === 'setup') return;
+              if (target === 'boss' && user.role === 'boss') { setView(VIEWS.BOSS_DASH); return }
+              if (target === 'profile') { setView(VIEWS.PROFILE); return }
+              if (target === 'history') { setView(VIEWS.HISTORY); return }
+              if (target === 'help') { setView(VIEWS.HELP); return }
+              if (target === 'faq') { setView(VIEWS.FAQ); return }
+              console.log('Navigate to section:', target)
+            }}
+          />
+          <FAQPage onBack={() => setView(VIEWS.SAAS_SELECT)} playPlunk={playPlunk} />
+        </>
+      )
+    case VIEWS.TOS:
+      return (
+        <>
+          <CornerLogo onClick={handleLogoHome} />
+          {renderBackToTop}
+          <TermsOfService onBack={() => setView(VIEWS.AUTH)} playPlunk={playPlunk} />
+        </>
+      )
+    case VIEWS.PRIVACY:
+      return (
+        <>
+          <CornerLogo onClick={handleLogoHome} />
+          {renderBackToTop}
+          <PrivacyPolicy onBack={() => setView(VIEWS.AUTH)} playPlunk={playPlunk} />
         </>
       )
     default:

@@ -8,6 +8,10 @@ export default function DistributionSelection({ onSelect, onBack, playPlunk }) {
   useEffect(() => { playPlunk?.() }, [])
 
   function handleSelect(method) {
+    if (method.comingSoon) {
+      playPlunk?.()
+      return // Don't allow selection of coming soon items
+    }
     setActive(method.id)
     playPlunk?.()
     onSelect?.(method)
@@ -21,18 +25,21 @@ export default function DistributionSelection({ onSelect, onBack, playPlunk }) {
         {DistributionMethods.map((m, idx) => {
           const isActive = m.id === active
           const extra = m.id === 'custom' ? ' dist-custom' : ''
+          const comingSoonClass = m.comingSoon ? ' coming-soon' : ''
           return (
             <button
               key={m.id}
               type="button"
-              className={`saas-tile dist-tile${isActive ? ' is-active' : ''}${extra}`}
+              className={`saas-tile dist-tile${isActive ? ' is-active' : ''}${extra}${comingSoonClass}`}
               data-dist={m.id}
               onClick={() => handleSelect(m)}
               aria-pressed={isActive}
-              aria-label={`Select distribution ${m.name}`}
+              aria-label={`Select distribution ${m.name}${m.comingSoon ? ' (Coming Soon)' : ''}`}
+              disabled={m.comingSoon}
             >
               <span className="saas-tile-name" style={{ textAlign:'center' }}>{m.name}</span>
               <span className="dist-desc" aria-hidden="true">{m.description}</span>
+              {m.comingSoon && <span className="coming-soon-badge">COMING SOON</span>}
             </button>
           )
         })}
